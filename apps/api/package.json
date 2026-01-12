@@ -1,32 +1,33 @@
+cd /workspaces/backoffice-mvp
+
+cat > apps/api/package.json <<'JSON'
 {
   "name": "backoffice-api",
-  "version": "0.0.1",
   "private": true,
+  "version": "0.1.0",
   "type": "module",
+  "main": "dist/server.js",
   "scripts": {
-    "dev": "NODE_OPTIONS=--enable-source-maps tsx watch src/server.ts",
-    "build": "tsup src/server.ts --format esm --dts false --sourcemap --out-dir dist",
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc -p tsconfig.json",
     "start": "node dist/server.js",
-    "lint": "echo "(lint placeholder)"",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "echo lint",
     "prisma:generate": "prisma generate",
-    "prisma:migrate:dev": "prisma migrate dev",
     "prisma:migrate:deploy": "prisma migrate deploy",
     "prisma:seed": "prisma db seed"
   },
   "dependencies": {
-    "@backoffice/shared": "workspace:*",
-    "@prisma/client": "^5.18.0",
+    "@prisma/client": "^5.22.0",
     "bcryptjs": "^2.4.3",
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
-    "express-rate-limit": "^7.4.0",
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.2",
     "pino": "^9.3.2",
-    "pino-http": "^10.3.0",
+    "pino-http": "^10.2.0",
+    "rate-limiter-flexible": "^5.0.5",
     "zod": "^3.23.8"
   },
   "devDependencies": {
@@ -34,12 +35,15 @@
     "@types/cors": "^2.8.17",
     "@types/express": "^4.17.21",
     "@types/jsonwebtoken": "^9.0.6",
-    "prisma": "^5.18.0",
-    "tsup": "^8.2.4",
-    "tsx": "^4.17.0",
+    "@types/node": "^20.14.12",
+    "prisma": "^5.22.0",
+    "tsx": "^4.16.5",
     "typescript": "^5.6.3"
   },
   "prisma": {
-    "seed": "node --loader tsx prisma/seed.ts"
+    "seed": "tsx prisma/seed.ts"
   }
 }
+JSON
+
+node -e "const fs=require('fs'); JSON.parse(fs.readFileSync('apps/api/package.json','utf8')); console.log('apps/api/package.json OK')"
