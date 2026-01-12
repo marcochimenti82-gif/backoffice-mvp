@@ -1,6 +1,3 @@
-cd /workspaces/backoffice-mvp
-
-cat > apps/api/package.json <<'JSON'
 {
   "name": "backoffice-api",
   "private": true,
@@ -44,6 +41,3 @@ cat > apps/api/package.json <<'JSON'
     "seed": "tsx prisma/seed.ts"
   }
 }
-JSON
-
-node -e "const fs=require('fs'); JSON.parse(fs.readFileSync('apps/api/package.json','utf8')); console.log('apps/api/package.json OK')"
