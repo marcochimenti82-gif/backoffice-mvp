@@ -1,0 +1,180 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  MANAGER
+  STAFF
+  ACCOUNTING
+}
+
+enum ReservationStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+}
+
+model Tenant {
+  id        String   @id @default(uuid())
+  name      String
+  timezone  String   @default("Europe/Rome")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users         User[]
+  contacts      Contact[]
+  reservations  Reservation[]
+  tables        Table[]
+  tableUnions   TableUnion[]
+  documents     Document[]
+  ledgerEntries LedgerEntry[]
+  auditLogs     AuditLog[]
+}
+
+model User {
+  id                  String   @id @default(uuid())
+  tenantId            String
+  name                String
+  phoneE164           String?
+  email               String   @unique
+  role                Role
+  passwordHash        String
+  isActive            Boolean  @default(true)
+  refreshTokenVersion Int      @default(0)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+}
+
+model Contact {
+  id        String   @id @default(uuid())
+  tenantId  String
+  fullName  String
+  phoneE164 String?
+  email     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant       Tenant        @relation(fields: [tenantId], references: [id])
+  reservations Reservation[]
+
+  @@index([tenantId])
+  @@index([phoneE164])
+}
+
+model Reservation {
+  id              String            @id @default(uuid())
+  tenantId        String
+  contactId       String?
+  status          ReservationStatus @default(PENDING)
+  experienceType  String?
+  startAt         DateTime
+  durationMinutes Int               @default(90)
+  pax             Int               @default(2)
+  notes           String?
+  assignedTableIds String[]         @default([])
+  calendarEventId String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  tenant  Tenant   @relation(fields: [tenantId], references: [id])
+  contact Contact? @relation(fields: [contactId], references: [id])
+
+  @@index([tenantId, startAt])
+  @@index([tenantId, status])
+}
+
+model Table {
+  id          String   @id @default(uuid())
+  tenantId    String
+  name        String
+  capacityMin Int      @default(1)
+  capacityMax Int      @default(4)
+  area        String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+}
+
+model TableUnion {
+  id          String   @id @default(uuid())
+  tenantId    String
+  name        String
+  tableIds    String[] @default([])
+  capacityMax Int      @default(0)
+  rules       Json     @default("{}")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+}
+
+model Document {
+  id               String   @id @default(uuid())
+  tenantId         String
+  driveFileId      String?
+  filename         String
+  mimeType         String?
+  tags             String[] @default([])
+  note             String?
+  linkedEntityType String?
+  linkedEntityId   String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+  @@index([linkedEntityType, linkedEntityId])
+}
+
+model LedgerEntry {
+  id          String   @id @default(uuid())
+  tenantId    String
+  center      String   @default("main")
+  type        String   // expense / income
+  amountCents Int
+  method      String?  // cash, card, etc
+  category    String?
+  description String?
+  occurredOn  DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, occurredOn])
+  @@index([tenantId, center])
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  tenantId    String
+  actorUserId String?
+  action      String
+  entityType  String
+  entityId    String
+  metadata    Json     @default("{}")
+  createdAt   DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, createdAt])
+  @@index([tenantId, action])
+  @@index([tenantId, entityType, entityId])
+}
