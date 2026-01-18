@@ -13,13 +13,12 @@ services:
       - key: PORT
         value: 10000
       # Set the rest in Render Dashboard (DATABASE_URL, JWT_*, CORS_ORIGIN, ...)
-
   - type: web
     name: backoffice-web
     env: node
     plan: starter
     region: frankfurt
-    buildCommand: pnpm install --frozen-lockfile && pnpm --filter backoffice-web build
+   buildCommand: pnpm install --frozen-lockfile --prod=false && pnpm --filter backoffice-web build
     startCommand: pnpm --filter backoffice-web start
     envVars:
       - key: NODE_ENV
