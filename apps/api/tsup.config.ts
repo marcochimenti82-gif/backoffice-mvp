@@ -5,6 +5,5 @@ export default defineConfig({
   format: ["esm"],
   sourcemap: true,
   outDir: "dist",
-  dts: false,        // boolean vero/falso, NON "false" stringa in CLI
-  clean: true
+  dts: false
 });
