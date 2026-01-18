@@ -1,3 +1,4 @@
+cat > packages/shared/package.json <<'JSON'
 {
   "name": "@backoffice/shared",
   "version": "0.0.1",
@@ -26,3 +27,4 @@
     "typescript": "^5.6.3"
   }
 }
+JSON
