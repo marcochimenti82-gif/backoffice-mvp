@@ -6,7 +6,7 @@
   "main": "dist/server.js",
   "scripts": {
     "dev": "NODE_OPTIONS=--enable-source-maps tsx watch src/server.ts",
-   "build": "tsup src/server.ts --format esm --sourcemap --out-dir dist",
+   "build": "tsup",
     "start": "node dist/server.js",
     "lint": "echo \"(lint placeholder)\"",
     "typecheck": "tsc -p tsconfig.json --noEmit",
