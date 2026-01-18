@@ -1,4 +1,3 @@
-cat > packages/shared/package.json <<'JSON'
 {
   "name": "@backoffice/shared",
   "version": "0.0.1",
@@ -8,16 +7,15 @@ cat > packages/shared/package.json <<'JSON'
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
     }
   },
   "files": [
     "dist"
   ],
   "scripts": {
-    "build": "tsup",
-    "dev": "tsup --watch"
+    "build": "tsup"
   },
   "dependencies": {
     "zod": "^3.23.8"
@@ -27,4 +25,3 @@ cat > packages/shared/package.json <<'JSON'
     "typescript": "^5.6.3"
   }
 }
-JSON
