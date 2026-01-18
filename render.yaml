@@ -4,7 +4,7 @@ services:
     env: node
     plan: starter
     region: frankfurt
-    buildCommand: pnpm install --frozen-lockfile && pnpm --filter backoffice-api prisma:generate && pnpm --filter backoffice-api build
+   buildCommand: pnpm install --frozen-lockfile --prod=false && pnpm --filter backoffice-api prisma:generate && pnpm --filter backoffice-api build
     startCommand: pnpm --filter backoffice-api prisma:migrate:deploy && pnpm --filter backoffice-api start
     healthCheckPath: /health
     envVars:
