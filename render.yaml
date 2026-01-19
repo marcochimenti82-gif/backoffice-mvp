@@ -7,7 +7,7 @@ services:
     buildCommand: >
       corepack enable &&
       corepack prepare pnpm@9.15.4 --activate &&
-      pnpm install --frozen-lockfile &&
+      pnpm install --frozen-lockfile --prod=false &&
       pnpm --filter ./packages/shared build &&
       pnpm --filter ./apps/api build
     startCommand: >
@@ -17,7 +17,7 @@ services:
       - key: NODE_ENV
         value: production
       - key: PORT
-        value: 10000
+        value: "10000"
       # Set the rest in Render Dashboard:
       # DATABASE_URL, JWT_ACCESS_SECRET, JWT_REFRESH_SECRET, CORS_ORIGIN, ...
 
@@ -29,7 +29,7 @@ services:
     buildCommand: >
       corepack enable &&
       corepack prepare pnpm@9.15.4 --activate &&
-      pnpm install --frozen-lockfile &&
+      pnpm install --frozen-lockfile --prod=false &&
       pnpm --filter ./packages/shared build &&
       pnpm --filter ./apps/web build
     startCommand: >
