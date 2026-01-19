@@ -9,6 +9,7 @@ services:
       corepack prepare pnpm@9.15.4 --activate &&
       pnpm install --frozen-lockfile --prod=false &&
       pnpm --filter ./packages/shared build &&
+      pnpm --filter ./apps/api exec prisma generate &&
       pnpm --filter ./apps/api build
     startCommand: >
       pnpm --filter ./apps/api start
@@ -18,8 +19,7 @@ services:
         value: production
       - key: PORT
         value: "10000"
-      # Set the rest in Render Dashboard:
-      # DATABASE_URL, JWT_ACCESS_SECRET, JWT_REFRESH_SECRET, CORS_ORIGIN, ...
+      # DATABASE_URL, JWT_*, CORS_ORIGIN nel Dashboard Render
 
   - type: web
     name: backoffice-web
@@ -37,4 +37,4 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
-      # NEXT_PUBLIC_API_BASE_URL must be set in Render Dashboard
+      # NEXT_PUBLIC_API_BASE_URL nel Dashboard Render
