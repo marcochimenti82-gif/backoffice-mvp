@@ -1,6 +1,33 @@
-import type { UserPublic, ReservationPublic, PatchReservationInput, ReservationStatus } from "@backoffice/shared";
+import type {
+  UserPublic,
+  ReservationPublic,
+  PatchReservationInput,
+  ReservationStatus,
+} from "@backoffice/shared";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL!;
+/**
+ * IMPORTANT:
+ * - NEXT_PUBLIC_API_BASE_URL must be set in Render (backoffice-web)
+ *   e.g. https://backoffice-api-qw53.onrender.com
+ */
+function requireApiBase(): string {
+  const raw = process.env.NEXT_PUBLIC_API_BASE_URL;
+
+  if (!raw) {
+    // Fail fast with a clear error (prevents "undefined/auth/..." calls on the WEB origin).
+    throw new Error(
+      "Missing NEXT_PUBLIC_API_BASE_URL. Set it in Render (backoffice-web) Environment to your API URL, e.g. https://backoffice-api-qw53.onrender.com"
+    );
+  }
+
+  // Trim whitespace + remove trailing slashes
+  return raw.trim().replace(/\/+$/, "");
+}
+
+function normalizePath(path: string): string {
+  if (!path) return "/";
+  return path.startsWith("/") ? path : `/${path}`;
+}
 
 type ApiError = { error: string; details?: unknown };
 
@@ -15,34 +42,58 @@ function setCsrfToken(token: string) {
 }
 
 async function tryRefresh(): Promise<UserPublic | null> {
+  const API_BASE = requireApiBase();
+
   const resp = await fetch(`${API_BASE}/auth/refresh`, {
     method: "POST",
-    credentials: "include"
+    credentials: "include",
+    mode: "cors",
   });
+
   if (!resp.ok) return null;
-  const json = await resp.json();
+
+  const json = (await resp.json().catch(() => null)) as
+    | { user?: UserPublic; csrfToken?: string }
+    | null;
+
   if (json?.csrfToken) setCsrfToken(json.csrfToken);
   return json?.user ?? null;
 }
 
-export async function apiFetch<T>(path: string, init: RequestInit = {}, retry = true): Promise<T> {
+export async function apiFetch<T>(
+  path: string,
+  init: RequestInit = {},
+  retry = true
+): Promise<T> {
+  const API_BASE = requireApiBase();
+  const url = `${API_BASE}${normalizePath(path)}`;
+
   const method = (init.method ?? "GET").toUpperCase();
   const unsafe = ["POST", "PUT", "PATCH", "DELETE"].includes(method);
 
+  // Build headers
   const headers = new Headers(init.headers);
-  headers.set("content-type", "application/json");
 
+  // Only force JSON content-type if we're likely sending JSON
+  // (prevents breaking FormData / file uploads in future)
+  if (!headers.has("content-type") && init.body && typeof init.body === "string") {
+    headers.set("content-type", "application/json");
+  }
+
+  // CSRF only for unsafe methods
   if (unsafe) {
     const csrf = getCsrfToken();
     if (csrf) headers.set("x-csrf-token", csrf);
   }
 
-  const resp = await fetch(`${API_BASE}${path}`, {
+  const resp = await fetch(url, {
     ...init,
     headers,
-    credentials: "include"
+    credentials: "include",
+    mode: "cors",
   });
 
+  // Auto refresh on 401 (once)
   if (resp.status === 401 && retry) {
     const ok = await tryRefresh();
     if (ok) return apiFetch<T>(path, init, false);
@@ -52,7 +103,11 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}, retry = 
     const err = (await resp.json().catch(() => null)) as ApiError | null;
     throw new Error(err?.error ?? `HTTP_${resp.status}`);
   }
-  return resp.json() as Promise<T>;
+
+  // Some endpoints may return empty body (204) in future
+  if (resp.status === 204) return undefined as unknown as T;
+
+  return (await resp.json()) as Promise<T>;
 }
 
 export async function login(email: string, password: string) {
@@ -61,7 +116,8 @@ export async function login(email: string, password: string) {
     { method: "POST", body: JSON.stringify({ email, password }) },
     false
   );
-  setCsrfToken(resp.csrfToken);
+
+  if (resp.csrfToken) setCsrfToken(resp.csrfToken);
   return resp.user;
 }
 
@@ -89,14 +145,16 @@ export async function listReservations(filters: ReservationFilters) {
   if (filters.status) params.set("status", filters.status);
   if (filters.q) params.set("q", filters.q);
 
-  const resp = await apiFetch<{ data: ReservationPublic[] }>(`/reservations?${params.toString()}`);
+  const resp = await apiFetch<{ data: ReservationPublic[] }>(
+    `/reservations?${params.toString()}`
+  );
   return resp.data;
 }
 
 export async function patchReservation(id: string, input: PatchReservationInput) {
   const resp = await apiFetch<{ data: ReservationPublic }>(`/reservations/${id}`, {
     method: "PATCH",
-    body: JSON.stringify(input)
+    body: JSON.stringify(input),
   });
   return resp.data;
 }
