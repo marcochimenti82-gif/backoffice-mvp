@@ -3,28 +3,34 @@ import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
-async function ensureTenant(slug: string, name: string) {
-  const existing = await prisma.tenant.findFirst({ where: { slug } });
+async function ensureTenantByName(name: string) {
+  const existing = await prisma.tenant.findFirst({
+    where: { name },
+  });
+
   if (existing) return existing;
 
+  // Se "timezone" nel tuo schema NON esiste, elimina la riga timezone.
   return prisma.tenant.create({
-    data: { slug, name },
+    data: {
+      name,
+      timezone: "Europe/Rome",
+    } as any,
   });
 }
 
 async function main() {
-  // Tenant fissi (no env, no undefined)
-  const pescheto = await ensureTenant("pescheto", "Pescheto Tenuta Chimenti");
-  const tuttibrilli = await ensureTenant("tuttibrilli", "TuttiBrilli Enoteca");
+  // Tenant (qui usiamo SOLO name, perché slug non esiste nel tuo schema)
+  const pescheto = await ensureTenantByName("Pescheto Tenuta Chimenti");
+  const tuttibrilli = await ensureTenantByName("TuttiBrilli Enoteca");
 
-  // Admin di default
-  const email = "admin@pescheto.local";
-  const plainPassword = "ChangeMe123!";
-  const passwordHash = bcrypt.hashSync(plainPassword, 10);
+  // Admin default
+  const passwordPlain = "ChangeMe123!";
+  const passwordHash = bcrypt.hashSync(passwordPlain, 10);
 
-  // Upsert su email (email deve essere unique nello schema)
+  // Admin Pescheto
   await prisma.user.upsert({
-    where: { email },
+    where: { email: "admin@pescheto.local" },
     update: {
       passwordHash,
       role: "ADMIN",
@@ -32,7 +38,7 @@ async function main() {
       name: "Admin Pescheto",
     },
     create: {
-      email,
+      email: "admin@pescheto.local",
       passwordHash,
       role: "ADMIN",
       tenantId: pescheto.id,
@@ -40,10 +46,9 @@ async function main() {
     },
   });
 
-  // (Opzionale) un admin anche per Tuttibrilli, se vuoi già pronto:
-  const emailTb = "admin@tuttibrilli.local";
+  // (Opzionale) Admin Tuttibrilli
   await prisma.user.upsert({
-    where: { email: emailTb },
+    where: { email: "admin@tuttibrilli.local" },
     update: {
       passwordHash,
       role: "ADMIN",
@@ -51,7 +56,7 @@ async function main() {
       name: "Admin Tuttibrilli",
     },
     create: {
-      email: emailTb,
+      email: "admin@tuttibrilli.local",
       passwordHash,
       role: "ADMIN",
       tenantId: tuttibrilli.id,
@@ -59,10 +64,9 @@ async function main() {
     },
   });
 
-  console.log("✅ Seed completato:");
-  console.log(`- Tenant: ${pescheto.slug}, ${tuttibrilli.slug}`);
-  console.log(`- Admin: ${email} / ${plainPassword}`);
-  console.log(`- Admin: ${emailTb} / ${plainPassword}`);
+  console.log("✅ Seed OK");
+  console.log("- admin@pescheto.local / ChangeMe123!");
+  console.log("- admin@tuttibrilli.local / ChangeMe123!");
 }
 
 main()
