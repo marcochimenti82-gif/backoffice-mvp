@@ -10,6 +10,8 @@ services:
       pnpm install --frozen-lockfile --prod=false &&
       pnpm --filter ./packages/shared build &&
       pnpm --filter ./apps/api exec prisma generate &&
+      pnpm --filter ./apps/api exec prisma migrate deploy &&
+      if [ "$SEED_ON_DEPLOY" = "true" ]; then pnpm --filter ./apps/api exec prisma db seed; fi &&
       pnpm --filter ./apps/api build
     startCommand: >
       pnpm --filter ./apps/api start
@@ -20,6 +22,7 @@ services:
       - key: PORT
         value: "10000"
       # DATABASE_URL, JWT_*, CORS_ORIGIN nel Dashboard Render
+      # SEED_ON_DEPLOY=true SOLO per il primo deploy (poi rimuoverla o metterla false)
 
   - type: web
     name: backoffice-web
