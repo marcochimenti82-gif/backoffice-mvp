@@ -4,40 +4,38 @@ services:
     env: node
     plan: starter
     region: frankfurt
-    buildCommand: >
+    buildCommand: |
       corepack enable &&
       corepack prepare pnpm@9.15.4 --activate &&
       pnpm install --frozen-lockfile --prod=false &&
-      pnpm --filter ./packages/shared build &&
-      pnpm --filter ./apps/api exec prisma generate &&
-      pnpm --filter ./apps/api exec prisma migrate deploy &&
-      if [ "$SEED_ON_DEPLOY" = "true" ]; then pnpm --filter ./apps/api exec prisma db seed; fi &&
-      pnpm --filter ./apps/api build
-    startCommand: >
-      pnpm --filter ./apps/api start
+      pnpm --filter @backoffice/shared build &&
+      pnpm --filter backoffice-api exec prisma generate &&
+      pnpm --filter backoffice-api exec prisma migrate deploy &&
+      pnpm --filter backoffice-api build
+    startCommand: pnpm --filter backoffice-api start
     healthCheckPath: /health
     envVars:
       - key: NODE_ENV
         value: production
       - key: PORT
         value: "10000"
-      # DATABASE_URL, JWT_*, CORS_ORIGIN nel Dashboard Render
-      # SEED_ON_DEPLOY=true SOLO per il primo deploy (poi rimuoverla o metterla false)
+      # Impostare nel Dashboard Render:
+      # DATABASE_URL, JWT_ACCESS_SECRET, JWT_REFRESH_SECRET, CORS_ORIGIN, ...
 
   - type: web
     name: backoffice-web
     env: node
     plan: starter
     region: frankfurt
-    buildCommand: >
+    buildCommand: |
       corepack enable &&
       corepack prepare pnpm@9.15.4 --activate &&
       pnpm install --frozen-lockfile --prod=false &&
-      pnpm --filter ./packages/shared build &&
-      pnpm --filter ./apps/web build
-    startCommand: >
-      pnpm --filter ./apps/web start
+      pnpm --filter @backoffice/shared build &&
+      pnpm --filter backoffice-web build
+    startCommand: pnpm --filter backoffice-web start
     envVars:
       - key: NODE_ENV
         value: production
-      # NEXT_PUBLIC_API_BASE_URL nel Dashboard Render
+      # Impostare nel Dashboard Render:
+      # NEXT_PUBLIC_API_BASE_URL=https://backoffice-api-qw53.onrender.com
