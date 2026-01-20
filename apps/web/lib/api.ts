@@ -41,16 +41,20 @@ function setCsrfToken(token: string) {
   sessionStorage.setItem("bo_csrf", token);
 }
 
+function clearCsrfToken() {
+  if (typeof window === "undefined") return;
+  sessionStorage.removeItem("bo_csrf");
+}
+
 /**
  * Refresh token (usa cookie bo_refresh) -> ottiene nuovo access token e (opz) nuovo csrfToken.
- * IMPORTANTE: qui ora inviamo anche x-csrf-token se disponibile.
+ * IMPORTANTE: inviamo anche x-csrf-token se disponibile.
  */
 async function tryRefresh(): Promise<UserPublic | null> {
   const csrf = getCsrfToken();
 
   const headers = new Headers();
   headers.set("accept", "application/json");
-  // non sempre serve body, ma alcuni backend vogliono comunque content-type su POST
   headers.set("content-type", "application/json");
   if (csrf) headers.set("x-csrf-token", csrf);
 
@@ -58,9 +62,7 @@ async function tryRefresh(): Promise<UserPublic | null> {
     method: "POST",
     credentials: "include",
     headers,
-    // evita caching lato Next / browser
     cache: "no-store",
-    // body vuoto esplicito (alcuni framework gestiscono meglio così)
     body: JSON.stringify({}),
   });
 
@@ -73,6 +75,16 @@ async function tryRefresh(): Promise<UserPublic | null> {
   if (json?.csrfToken) setCsrfToken(json.csrfToken);
 
   return json?.user ?? null;
+}
+
+function shouldAttemptRefreshOn401(path: string) {
+  // mai provare refresh su queste (evita loop)
+  if (path === "/auth/refresh") return false;
+  if (path === "/auth/login") return false;
+  if (path === "/auth/logout") return false;
+
+  // su /auth/me sì (access scaduto)
+  return true;
 }
 
 export async function apiFetch<T>(
@@ -94,8 +106,7 @@ export async function apiFetch<T>(
     headers.set("content-type", "application/json");
   }
 
-  // CSRF: lo inviamo quando presente.
-  // (Se il backend lo ignora su GET va bene; se invece lo richiede su refresh, ora c’è.)
+  // CSRF: lo inviamo quando presente
   const csrf = getCsrfToken();
   if (csrf && !headers.has("x-csrf-token")) {
     headers.set("x-csrf-token", csrf);
@@ -110,8 +121,8 @@ export async function apiFetch<T>(
     cache: "no-store",
   });
 
-  // Se non autenticato, proviamo refresh UNA volta
-  if (resp.status === 401 && retry && !path.startsWith("/auth/")) {
+  // Se non autenticato, proviamo refresh UNA volta (anche su /auth/me, ma non su login/logout/refresh)
+  if (resp.status === 401 && retry && shouldAttemptRefreshOn401(path)) {
     const ok = await tryRefresh();
     if (ok) return apiFetch<T>(path, init, false);
   }
@@ -136,14 +147,19 @@ export async function login(email: string, password: string) {
     false
   );
 
-  if (resp.csrfToken) setCsrfToken(resp.csrfToken);
+  // Se login non torna csrfToken, lo otteniamo subito con refresh (così le PATCH/POST funzionano sempre)
+  if (resp.csrfToken) {
+    setCsrfToken(resp.csrfToken);
+  } else {
+    await tryRefresh();
+  }
 
   return resp.user;
 }
 
 export async function logout() {
   await apiFetch("/auth/logout", { method: "POST", body: JSON.stringify({}) }, false);
-  if (typeof window !== "undefined") sessionStorage.removeItem("bo_csrf");
+  clearCsrfToken();
 }
 
 export async function me() {
